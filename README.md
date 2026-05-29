@@ -187,12 +187,17 @@ Raw Ticket
 
 ## ✨ Next Steps
 
+- Collect more real helpdesk tickets to expand beyond the current 962 clean samples
+- Retry LoRA fine-tuning on a larger, cleaner corpus — it showed promise but needs more data
+- Fix Active Directory classification — add more diverse AD-specific tickets to reduce overlap with Support general
+- Balance the multilingual distribution — English currently dominates at 77%
+- Generate noisier synthetic data that better matches real helpdesk language patterns
+- Add confidence calibration layer for LLM outputs
+- Deploy with Docker for scalable API serving
 
----
 ## 📊 Presentation
 
 [View Project Presentation (PDF)](./Smart_Support_Ticket_Classifier.pdf)
-
 
 ## 🧾 Acknowledgements
 
