@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IT Support Ticket Classifier</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: rgba(18, 18, 28, 0.85);
+      --surface-2: rgba(28, 28, 42, 0.9);
+      --card: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --text: #f0f0f5;
+      --muted: #888899;
+      --soft: #b0b0c0;
+      --accent: #e87c32;
+      --accent-2: #f0a855;
+      --good: #34d399;
+      --warn: #f0a855;
+      --bad: #f87171;
+      --shadow: 0 24px 64px rgba(0,0,0,0.5);
+      --radius: 20px;
+      --radius-sm: 12px;
+      --max: 1200px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      color: var(--text);
+      background: radial-gradient(ellipse at 20% 0%, rgba(232,124,50,0.07), transparent 50%), var(--bg);
+      line-height: 1.55;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 42px 42px;
+      opacity: 0.08;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), transparent 95%);
+    }
+
+    .page { min-height: 100vh; }
+    .page.hidden { display: none; }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(10,10,15,0.82);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .brand-square {
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(232,124,50,0.12);
+    }
+
+    .nav-tabs,
+    .matrix-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .tab {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--soft);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font: inherit;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .tab:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.14); }
+    .tab.active {
+      background: var(--accent);
+      color: #0a0a0f;
+      border-color: transparent;
+      font-weight: 700;
+    }
+
+    .report-shell,
+    .demo-shell {
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .report-shell {
+      max-width: var(--max);
+      padding: 34px 20px 72px;
+    }
+
+    .report-column {
+      display: grid;
+      gap: 22px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 12px;
+      padding-top: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(42px, 5.8vw, 72px);
+      line-height: 0.96;
+      letter-spacing: -0.06em;
+      max-width: 10ch;
+    }
+
+    .subtitle,
+    .section-lead,
+    .body-copy,
+    .report-note {
+      color: var(--soft);
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .stats-row,
+    .grid-2,
+    .findings-grid,
+    .metrics-grid,
+    .curves-grid,
+    .demo-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .stats-row {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .grid-2,
+    .curves-grid,
+    .demo-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .findings-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card,
+    .stat-card,
+    .finding-card,
+    .plot-card,
+    .demo-card,
+    .table-card,
+    .flow-card,
+    .switch-card,
+    .curve-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .card { padding: 24px; }
+    .stat-card { padding: 22px 20px; }
+    .stat-value {
+      display: block;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .stat-label {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .section {
+      display: grid;
+      gap: 16px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 40px);
+      line-height: 1.02;
+      letter-spacing: -0.05em;
+    }
+
+    .section-title.inline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .section-sentence {
+      margin: 0;
+      color: var(--soft);
+      font-size: 16px;
+      max-width: 72ch;
+    }
+
+    .flow-card {
+      padding: 18px;
+      overflow: hidden;
+    }
+
+    .svg-flow {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .plot-card { padding: 20px; }
+    .plot-title { margin: 0 0 10px; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; }
+    .plot { height: 380px; }
+    .plot.small { height: 320px; }
+
+    .table-card { padding: 0; overflow: hidden; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 820px; }
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      vertical-align: top;
+    }
+    th {
+      color: var(--soft);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+    td { color: var(--soft); }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .badge.good { color: var(--good); background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.2); }
+    .badge.warn { color: var(--warn); background: rgba(240,168,85,0.08); border-color: rgba(240,168,85,0.22); }
+    .badge.bad { color: var(--bad); background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.22); }
+
+    .switch-card { padding: 20px; }
+    .matrix-tabs { margin-top: 14px; }
+    .tab.small { padding: 9px 13px; font-size: 13px; }
+    .matrix-frame {
+      margin: 18px auto 0;
+      max-width: 700px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+    .matrix-frame img { display: block; width: 100%; height: auto; }
+
+    .preprocess-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .preprocess-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      position: relative;
+    }
+
+    .step-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #0a0a0f;
+      font-weight: 800;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .preprocess-card h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    .preprocess-card p {
+      margin: 0;
+      color: var(--soft);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .lora-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .lora-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 20px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .lora-card img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      object-fit: contain;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .lora-card .lora-label {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .finding-card {
+      padding: 24px;
+      background: var(--surface-2);
+    }
+    .finding-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .emoji-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      font-size: 20px;
+    }
+    .finding-copy h3 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+    .finding-copy p {
+      margin: 0;
+      color: var(--soft);
+      max-width: 52ch;
+    }
+
+    .demo-shell {
+      max-width: 800px;
+      padding: 34px 20px 72px;
+    }
+
+    .demo-intro {
+      margin-bottom: 18px;
+    }
+
+    .demo-input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+
+    .demo-textarea {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+      color: var(--text);
+      padding: 18px 18px;
+      font: inherit;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    .demo-textarea:focus { border-color: var(--accent); }
+    .demo-textarea::placeholder { color: #6f6f80; }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .primary-btn,
+    .ghost-btn {
+      appearance: none;
+      border: 0;
+      font: inherit;
+      cursor: pointer;
+      border-radius: 999px;
+      transition: transform 0.15s ease, opacity 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .primary-btn {
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #0a0a0f;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 18px 34px rgba(232,124,50,0.18);
+      min-width: 150px;
+    }
+
+    .primary-btn:hover:not(:disabled),
+    .ghost-btn:hover:not(:disabled) { transform: translateY(-1px); }
+
+    .primary-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .ghost-btn {
+      padding: 14px 18px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      color: var(--soft);
+      background: transparent;
+      min-width: 110px;
+    }
+
+    .ghost-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .demo-error {
+      margin-top: 12px;
+      color: var(--bad);
+      font-size: 14px;
+      line-height: 1.4;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .demo-results {
+      margin-top: 18px;
+      display: none;
+    }
+
+    .demo-results.active {
+      display: grid;
+      gap: 18px;
+    }
+
+    .demo-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .demo-card {
+      padding: 24px;
+      background: var(--surface);
+    }
+
+    .model-name {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 14px;
+    }
+
+    .predicted-label {
+      display: inline-block;
+      margin-bottom: 14px;
+      font-size: 22px;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .confidence-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .confidence-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      transition: width 0.45s ease;
+    }
+
+    .confidence-value {
+      color: var(--soft);
+      font-size: 14px;
+      text-align: right;
+    }
+
+    .card-status {
+      margin-top: 12px;
+      color: var(--soft);
+      font-size: 14px;
+      min-height: 22px;
+    }
+
+    .shimmer {
+      position: relative;
+      overflow: hidden;
+      background: rgba(255,255,255,0.05);
+      border-radius: 14px;
+    }
+
+    .shimmer::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+      animation: shimmer 1.2s infinite;
+    }
+
+    .loading .predicted-label,
+    .loading .confidence-track,
+    .loading .confidence-value,
+    .loading .card-status {
+      position: relative;
+      overflow: hidden;
+      color: transparent;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .loading .predicted-label {
+      height: 28px;
+      width: 60%;
+      border-radius: 12px;
+    }
+
+    .loading .confidence-track {
+      height: 18px;
+      border-radius: 999px;
+    }
+
+    .loading .confidence-value {
+      height: 18px;
+      width: 52px;
+      border-radius: 9px;
+      justify-self: end;
+    }
+
+    .loading .card-status {
+      height: 18px;
+      width: 72%;
+      border-radius: 9px;
+    }
+
+    .loading .predicted-label::after,
+    .loading .confidence-track::after,
+    .loading .confidence-value::after,
+    .loading .card-status::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+      animation: shimmer 1.2s infinite;
+    }
+
+    .hidden { display: none !important; }
+    .fade-in { opacity: 0; transform: translateY(18px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    .wrap { width: 100%; }
+    .section-spacer { height: 4px; }
+
+    @keyframes shimmer {
+      100% { transform: translateX(100%); }
+    }
+
+    @media (max-width: 980px) {
+      .stats-row,
+      .grid-2,
+      .findings-grid,
+      .curves-grid,
+      .demo-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .nav-inner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 640px) {
+      h1 { max-width: 9ch; }
+      .report-shell,
+      .demo-shell { padding-inline: 16px; }
+      .card,
+      .stat-card,
+      .finding-card,
+      .plot-card,
+      .demo-card,
+      .table-card,
+      .flow-card,
+      .switch-card,
+      .curve-card { border-radius: 18px; }
+      .plot { height: 320px; }
+      .curve-card img { height: 240px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <div class="brand"><span class="brand-square" aria-hidden="true"></span><span>Ticket Classifier</span></div>
+      <div class="nav-tabs">
+        <button class="tab active" data-view="report" type="button">Report</button>
+        <button class="tab" data-view="demo" type="button">Demo</button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div id="view-report" class="page" style="display:block;">
+      <div class="report-shell">
+        <div class="report-column">
+          <section class="hero fade-in">
+            <h1>IT Support Ticket Classifier</h1>
+            <p class="subtitle">8 models. 2,229 tickets. One honest audit.</p>
+          </section>
+
+          <section class="stats-row fade-in" aria-label="Summary statistics">
+            <div class="stat-card"><span class="stat-value">2,229</span><div class="stat-label">Total tickets</div></div>
+            <div class="stat-card"><span class="stat-value">610</span><div class="stat-label">Duplicates found</div></div>
+            <div class="stat-card"><span class="stat-value">962</span><div class="stat-label">Clean samples</div></div>
+            <div class="stat-card"><span class="stat-value">0.74</span><div class="stat-label">Best macro F1</div></div>
+          </section>
+
+          <section class="flow-card fade-in">
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; overflow-x: auto;">
+            <svg class="svg-flow" viewBox="0 0 960 260" width="100%" height="260" role="img" aria-label="Model pipeline diagram">
+              <defs>
+                <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#e87c32"></path>
+                </marker>
+              </defs>
+
+              <g fill="none" stroke="#e87c32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)">
+                <line x1="180" y1="130" x2="200" y2="130" />
+                <line x1="350" y1="130" x2="320" y2="130" />
+                <line x1="320" y1="40" x2="400" y2="40" />
+                <line x1="320" y1="100" x2="400" y2="100" />
+                <line x1="320" y1="160" x2="400" y2="160" />
+                <line x1="320" y1="220" x2="400" y2="220" />
+                <line x1="550" y1="40" x2="580" y2="40" />
+                <line x1="550" y1="100" x2="580" y2="100" />
+                <line x1="550" y1="160" x2="580" y2="160" />
+                <line x1="550" y1="220" x2="580" y2="220" />
+                <line x1="730" y1="130" x2="800" y2="130" />
+                <line x1="320" y1="40" x2="320" y2="220" />
+              </g>
+
+              <g fill="#12121c" stroke="rgba(255,255,255,0.12)" stroke-width="1.5">
+                <rect x="30" y="113" rx="10" ry="10" width="150" height="34" />
+                <rect x="200" y="113" rx="10" ry="10" width="150" height="34" />
+                <rect x="400" y="23" rx="10" ry="10" width="150" height="34" />
+                <rect x="400" y="83" rx="10" ry="10" width="150" height="34" />
+                <rect x="400" y="143" rx="10" ry="10" width="150" height="34" />
+                <rect x="400" y="203" rx="10" ry="10" width="150" height="34" />
+                <rect x="580" y="23" rx="10" ry="10" width="150" height="34" />
+                <rect x="580" y="83" rx="10" ry="10" width="150" height="34" />
+                <rect x="580" y="143" rx="10" ry="10" width="150" height="34" />
+                <rect x="580" y="203" rx="10" ry="10" width="150" height="34" />
+                <rect x="800" y="113" rx="10" ry="10" width="150" height="34" />
+              </g>
+
+              <g fill="#f0f0f5" font-family="Inter, sans-serif" font-size="13" text-anchor="middle" dominant-baseline="middle">
+                <text x="105" y="130">Raw Ticket</text>
+                <text x="275" y="130">Clean &amp; Deduplicate</text>
+                <text x="475" y="40">TF-IDF Features</text>
+                <text x="475" y="100">Sentence Embeddings</text>
+                <text x="475" y="160">GPT-4o mini</text>
+                <text x="475" y="220">DistilBERT + LoRA</text>
+                <text x="655" y="40">Logistic Regression</text>
+                <text x="655" y="100">Logistic Regression</text>
+                <text x="655" y="160">Prompt Classification</text>
+                <text x="655" y="220">Fine-tuned Classifier</text>
+                <text x="875" y="130">Predicted Class</text>
+              </g>
+            </svg>
+            </div>
+          </section>
+
+          <section class="section fade-in">
+            <p class="section-sentence">After deduplication, 962 clean samples across 6 classes.</p>
+            <div class="grid-2">
+              <div class="plot-card">
+                <p class="plot-title">Class distribution</p>
+                <div id="classChart" class="plot"></div>
+              </div>
+              <div class="plot-card">
+                <p class="plot-title">Language distribution</p>
+                <div id="langChart" class="plot"></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="preprocessing" class="section fade-in">
+            <div class="section-title">Preprocessing</div>
+            <p class="section-sentence">Steps applied before any model saw the data.</p>
+            <div class="preprocess-grid">
+              <article class="preprocess-card">
+                <div class="step-badge">1</div>
+                <h3>Deduplication</h3>
+                <p>Exact-match duplicate tickets removed. Training set shrank from 1,572 to 962 samples.</p>
+              </article>
+              <article class="preprocess-card">
+                <div class="step-badge">2</div>
+                <h3>EOL class removal</h3>
+                <p>44 of 45 EOL samples were identical auto-generated templates. Class dropped entirely.</p>
+              </article>
+              <article class="preprocess-card">
+                <div class="step-badge">3</div>
+                <h3>Label cleaning</h3>
+                <p>One ticket text appeared under two different labels. Cross-label duplicates resolved.</p>
+              </article>
+              <article class="preprocess-card">
+                <div class="step-badge">4</div>
+                <h3>Train/test preservation</h3>
+                <p>Pre-existing split respected. Test set kept completely untouched throughout cleaning.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="section fade-in">
+            <div class="section-title">Results</div>
+            <p class="section-sentence">Macro F1 across all 8 models — higher is better.</p>
+            <div class="plot-card">
+              <div id="resultsChart" class="plot small"></div>
+            </div>
+
+            <div class="table-card">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>Macro F1</th>
+                      <th>Accuracy</th>
+                      <th>Real tickets</th>
+                      <th>Custom 50</th>
+                      <th>Takeaway</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Original Keras (dirty data)</td><td>0.72</td><td>0.79</td><td>N/A</td><td>N/A</td><td><span class="badge warn">Inflated by dirty data</span></td></tr>
+                    <tr><td>TF-IDF + Logistic Regression</td><td>0.69</td><td>0.75</td><td>N/A</td><td>N/A</td><td><span class="badge good">Honest baseline</span></td></tr>
+                    <tr><td>Sentence Embeddings + LR</td><td>0.74</td><td>0.78</td><td>0.83</td><td>0.59</td><td><span class="badge good">Best overall</span></td></tr>
+                    <tr><td>GPT-4o mini zero-shot</td><td>0.64</td><td>0.67</td><td>0.71</td><td>0.80</td><td><span class="badge warn">Flexible, not robust</span></td></tr>
+                    <tr><td>GPT-4o mini few-shot</td><td>0.71</td><td>0.72</td><td>0.68</td><td>0.86</td><td><span class="badge good">Strong on clean prompts</span></td></tr>
+                    <tr><td>DistilBERT + LoRA A</td><td>0.70</td><td>0.78</td><td>0.69</td><td>0.48</td><td><span class="badge warn">Needs more data</span></td></tr>
+                    <tr><td>DistilBERT + LoRA B</td><td>0.11</td><td>0.30</td><td>N/A</td><td>N/A</td><td><span class="badge bad">Failure run</span></td></tr>
+                    <tr><td>Embeddings + LR + synthetic</td><td>0.72</td><td>0.78</td><td>0.73</td><td>0.84</td><td><span class="badge warn">Better external, weaker real</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="section fade-in">
+            <div class="section-title">Confusion Matrices</div>
+            <div class="matrix-tabs" role="tablist" aria-label="Confusion matrix selector">
+              <button class="tab small" data-matrix="tfidf" type="button">TF-IDF</button>
+              <button class="tab small active" data-matrix="embeddings" type="button">Embeddings</button>
+              <button class="tab small" data-matrix="emb_augmented" type="button">Embeddings (aug)</button>
+              <button class="tab small" data-matrix="gpt_zeroshot" type="button">GPT zero-shot</button>
+              <button class="tab small" data-matrix="gpt_fewshot" type="button">GPT few-shot</button>
+              <button class="tab small" data-matrix="lora_a" type="button">LoRA A</button>
+              <button class="tab small" data-matrix="lora_b" type="button">LoRA B</button>
+            </div>
+            <div class="matrix-frame">
+              <img id="matrixImage" src="/static/images/emb_confusion_matrix.png" alt="Embeddings confusion matrix">
+            </div>
+          </section>
+
+          <section class="section fade-in">
+            <div class="section-title">LoRA training curves</div>
+            <p class="section-sentence">LoRA B collapsed to predicting 2 classes after EOL destabilized training.</p>
+            <div class="lora-grid">
+              <figure class="lora-card">
+                <img src="/static/images/lora_model_a_training_curve.png" alt="LoRA A training curve">
+                <figcaption class="lora-label">LoRA A — 6 classes (EOL dropped)</figcaption>
+              </figure>
+              <figure class="lora-card">
+                <img src="/static/images/lora_model_b_training_curve.png" alt="LoRA B training curve">
+                <figcaption class="lora-label">LoRA B — 7 classes (EOL included) — collapsed</figcaption>
+              </figure>
+            </div>
+          </section>
+
+          <section class="section fade-in">
+            <div class="section-title">Key findings</div>
+            <div class="findings-grid">
+              <article class="finding-card">
+                <div class="finding-head">
+                  <div class="emoji-circle" aria-hidden="true">🔍</div>
+                  <div class="finding-copy">
+                    <h3>Dirty data inflated metrics</h3>
+                    <p>EOL got 1.00 F1 on 44 identical templates. The audit was more valuable than any model.</p>
+                  </div>
+                </div>
+              </article>
+              <article class="finding-card">
+                <div class="finding-head">
+                  <div class="emoji-circle" aria-hidden="true">🧠</div>
+                  <div class="finding-copy">
+                    <h3>Embeddings beat TF-IDF</h3>
+                    <p>They added +0.05 macro F1 and +0.09 on real tickets. Semantic meaning matters more than word frequency on short noisy text.</p>
+                  </div>
+                </div>
+              </article>
+              <article class="finding-card">
+                <div class="finding-head">
+                  <div class="emoji-circle" aria-hidden="true">⚡</div>
+                  <div class="finding-copy">
+                    <h3>GPT wins on clean prompts only</h3>
+                    <p>It reached 0.86 on the custom set, but only 0.68 on real helpdesk traffic. Prompt design doesn't fix distribution shift.</p>
+                  </div>
+                </div>
+              </article>
+              <article class="finding-card">
+                <div class="finding-head">
+                  <div class="emoji-circle" aria-hidden="true">🔬</div>
+                  <div class="finding-copy">
+                    <h3>Synthetic data shifted the optimization target</h3>
+                    <p>Real-ticket F1 dropped 0.83 → 0.73. LLM-generated tickets are too clean to represent real noise.</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-demo" class="page hidden" style="display:none;">
+      <div class="demo-shell">
+        <section class="demo-intro fade-in">
+          <h2 style="font-size:clamp(28px,4vw,42px);letter-spacing:-.03em;margin-bottom:10px;">Classify a Ticket</h2>
+          <p class="subtitle" style="margin-bottom:32px;font-size:15px;">Paste any IT support ticket. All four models run simultaneously.</p>
+        </section>
+
+        <section class="demo-input-card fade-in" aria-label="Classifier demo">
+          <textarea id="ticketInput" class="demo-textarea" placeholder="Paste an IT support ticket here..."></textarea>
+          <div class="action-row">
+            <button id="classifyBtn" class="primary-btn" type="button" disabled>Classify</button>
+            <button id="clearBtn" class="ghost-btn" type="button" style="display:none;">Clear</button>
+          </div>
+          <div id="errorArea" class="demo-error" aria-live="polite" style="display:none;">Could not reach the classifier — make sure the Flask server is running.</div>
+
+          <div id="resultsArea" class="demo-results" style="display:none;">
+            <div id="modelCards" class="demo-grid">
+              <article class="demo-card" data-model="tfidf">
+                <div class="model-name">TF-IDF + Logistic Regression</div>
+                <div class="predicted-label">Awaiting input</div>
+                <div class="confidence-row">
+                  <div class="confidence-track"><div class="confidence-fill"></div></div>
+                  <div class="confidence-value">0%</div>
+                </div>
+                <div class="card-status">Type a ticket to see the prediction.</div>
+              </article>
+              <article class="demo-card" data-model="embeddings">
+                <div class="model-name">Sentence Embeddings + LR</div>
+                <div class="predicted-label">Awaiting input</div>
+                <div class="confidence-row">
+                  <div class="confidence-track"><div class="confidence-fill"></div></div>
+                  <div class="confidence-value">0%</div>
+                </div>
+                <div class="card-status">Type a ticket to see the prediction.</div>
+              </article>
+              <article class="demo-card" data-model="gpt_fewshot">
+                <div class="model-name">GPT-4o mini (few-shot)</div>
+                <div class="predicted-label">Awaiting input</div>
+                <div class="confidence-row">
+                  <div class="confidence-track"><div class="confidence-fill"></div></div>
+                  <div class="confidence-value">0%</div>
+                </div>
+                <div class="card-status">Type a ticket to see the prediction.</div>
+              </article>
+              <article class="demo-card" data-model="lora">
+                <div class="model-name">DistilBERT + LoRA</div>
+                <div class="predicted-label">Awaiting input</div>
+                <div class="confidence-row">
+                  <div class="confidence-track"><div class="confidence-fill"></div></div>
+                  <div class="confidence-value">0%</div>
+                </div>
+                <div class="card-status">Type a ticket to see the prediction.</div>
+              </article>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const classData = [
+      { label: 'Support general', value: 351 },
+      { label: 'Fileservice', value: 206 },
+      { label: 'Software', value: 129 },
+      { label: 'O365', value: 126 },
+      { label: 'Active Directory', value: 83 },
+      { label: 'Computer-Services', value: 65 },
+      { label: 'EOL', value: 2 }
+    ];
+
+    const classBarColors = [
+      'rgba(240,168,85,0.95)',
+      'rgba(232,124,50,0.95)',
+      'rgba(240,168,85,0.82)',
+      'rgba(232,124,50,0.74)',
+      'rgba(240,168,85,0.6)',
+      'rgba(255,255,255,0.22)',
+      'rgba(255,255,255,0.14)'
+    ];
+
+    Plotly.newPlot('classChart', [{
+      type: 'bar',
+      x: classData.map((item) => item.value),
+      y: classData.map((item) => item.label),
+      orientation: 'h',
+      marker: {
+        color: classBarColors,
+        line: { color: 'rgba(255,255,255,0.14)', width: 1 }
+      },
+      hovertemplate: '%{y}: <b>%{x}</b> clean training tickets<extra></extra>'
+    }], {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      margin: { l: 150, r: 20, t: 8, b: 30 },
+      font: { color: '#f0f0f5', family: 'Inter, sans-serif' },
+      xaxis: { gridcolor: 'rgba(255,255,255,0.08)', zeroline: false, color: '#b0b0c0' },
+      yaxis: { automargin: true, color: '#b0b0c0' }
+    }, { displayModeBar: false, responsive: true });
+
+    Plotly.newPlot('langChart', [{
+      type: 'pie',
+      values: [721, 94, 60, 50, 11],
+      labels: ['English', 'Portuguese', 'German', 'Unknown', 'Spanish'],
+      hole: 0.58,
+      sort: false,
+      marker: {
+        colors: ['#e87c32', '#f0a855', '#b0b0c0', '#6f6f80', '#34d399']
+      },
+      textinfo: 'label',
+      hovertemplate: '%{label}: <b>%{value}</b><extra></extra>'
+    }], {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      margin: { l: 10, r: 10, t: 10, b: 10 },
+      font: { color: '#f0f0f5', family: 'Inter, sans-serif' },
+      annotations: [{ text: '936 tickets', showarrow: false, font: { size: 18, color: '#f0f0f5' } }]
+    }, { displayModeBar: false, responsive: true });
+
+    const models = [
+      'Original Keras (dirty)',
+      'TF-IDF + LR',
+      'Embeddings + LR',
+      'GPT zero-shot',
+      'GPT few-shot',
+      'LoRA A',
+      'LoRA B',
+      'Embeddings + LR + synthetic'
+    ];
+    const macroF1 = [0.72, 0.69, 0.74, 0.64, 0.71, 0.70, 0.11, 0.72];
+    const accuracy = [0.79, 0.75, 0.78, 0.67, 0.72, 0.78, 0.30, 0.78];
+    const custom = [null, null, 0.59, 0.80, 0.86, 0.48, null, 0.84];
+    const real = [null, null, 0.83, 0.71, 0.68, 0.69, null, 0.73];
+
+    Plotly.newPlot('resultsChart', [{
+      type: 'bar',
+      x: models,
+      y: macroF1,
+      marker: {
+        color: macroF1.map((value, index) => {
+          if (index === 2) return '#34d399';
+          if (index === 6) return '#f87171';
+          return 'rgba(232,124,50,0.55)';
+        }),
+        line: { color: 'rgba(255,255,255,0.16)', width: 1 }
+      },
+      customdata: models.map((model, index) => [accuracy[index], real[index], custom[index]]),
+      hovertemplate:
+        '<b>%{x}</b><br>' +
+        'Macro F1: %{y:.2f}<br>' +
+        'Accuracy: %{customdata[0]:.2f}<br>' +
+        'Real tickets: %{customdata[1]}<br>' +
+        'Custom 50: %{customdata[2]}<extra></extra>'
+    }], {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      margin: { l: 48, r: 20, t: 10, b: 110 },
+      font: { color: '#f0f0f5', family: 'Inter, sans-serif' },
+      yaxis: {
+        title: 'Macro F1',
+        range: [0, 0.82],
+        gridcolor: 'rgba(255,255,255,0.06)',
+        zeroline: false,
+        tickfont: { color: '#888899' }
+      },
+      xaxis: { tickangle: -24, gridcolor: 'rgba(255,255,255,0.06)', tickfont: { color: '#888899' } },
+      shapes: [{ type: 'line', x0: -0.5, x1: 7.5, y0: 0.74, y1: 0.74, line: { color: 'rgba(255,255,255,0.18)', dash: 'dot' } }],
+      annotations: [{ x: 2, y: 0.765, text: 'Best overall macro F1', showarrow: false, font: { color: 'var(--accent-2)', size: 12 } }]
+    }, { displayModeBar: false, responsive: true });
+
+    const pageTabs = Array.from(document.querySelectorAll('.tab'));
+    const pages = {
+      report: document.getElementById('view-report'),
+      demo: document.getElementById('view-demo')
+    };
+
+    const matrixTabs = Array.from(document.querySelectorAll('.matrix-tabs .tab'));
+    const matrixImage = document.getElementById('matrixImage');
+    const matrixSources = {
+      tfidf: '/static/images/tfidf_confusion_matrix.png',
+      embeddings: '/static/images/emb_confusion_matrix.png',
+      emb_augmented: '/static/images/emb_augmented_confusion_matrix.png',
+      gpt_zeroshot: '/static/images/gpt_zeroshot_confusion_matrix.png',
+      gpt_fewshot: '/static/images/gpt_fewshot_confusion_matrix.png',
+      lora_a: '/static/images/lora_model_a_confusion_matrix.png',
+      lora_b: '/static/images/lora_model_b_confusion_matrix.png'
+    };
+
+    function activatePage(view) {
+      document.getElementById('view-report').style.display = view === 'report' ? 'block' : 'none';
+      document.getElementById('view-demo').style.display = view === 'demo' ? 'block' : 'none';
+
+      pageTabs.forEach((button) => {
+        button.classList.toggle('active', button.dataset.view === view);
+      });
+
+      if (view === 'report') {
+        window.dispatchEvent(new Event('resize'));
+      }
+    }
+
+    pageTabs.forEach((button) => {
+      button.addEventListener('click', () => activatePage(button.dataset.view));
+    });
+
+    matrixTabs.forEach((button) => {
+      button.addEventListener('click', () => {
+        matrixTabs.forEach((tab) => tab.classList.toggle('active', tab === button));
+        const key = button.dataset.matrix;
+        matrixImage.src = matrixSources[key];
+        matrixImage.alt = button.textContent.trim() + ' confusion matrix';
+      });
+    });
+
+    const classColors = {
+      'Support general': '#60a5fa',
+      'Fileservice': '#22d3ee',
+      'Software': '#a78bfa',
+      'O365': '#34d399',
+      'Active Directory': '#fbbf24',
+      'Computer-Services': '#f87171'
+    };
+
+    const demoText = document.getElementById('ticketInput');
+    const classifyBtn = document.getElementById('classifyBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const demoError = document.getElementById('errorArea');
+    const demoResults = document.getElementById('resultsArea');
+    const demoCards = Array.from(document.querySelectorAll('#modelCards .demo-card'));
+
+    function classColor(label) {
+      return classColors[label] || '#f0f0f5';
+    }
+
+    function resetCard(card) {
+      card.classList.remove('loading');
+      const label = card.querySelector('.predicted-label');
+      const fill = card.querySelector('.confidence-fill');
+      const value = card.querySelector('.confidence-value');
+      const status = card.querySelector('.card-status');
+      label.textContent = 'Awaiting input';
+      label.style.color = 'var(--soft)';
+      fill.style.width = '0%';
+      fill.style.background = 'rgba(255,255,255,0.2)';
+      value.textContent = '0%';
+      status.textContent = 'Type a ticket to see the prediction.';
+    }
+
+    function setSkeleton(card) {
+      card.classList.add('loading');
+      const label = card.querySelector('.predicted-label');
+      const fill = card.querySelector('.confidence-fill');
+      const value = card.querySelector('.confidence-value');
+      const status = card.querySelector('.card-status');
+      label.textContent = ' ';
+      fill.style.width = '28%';
+      fill.style.background = 'rgba(255,255,255,0.16)';
+      value.textContent = ' ';
+      status.textContent = ' ';
+    }
+
+    function setPrediction(card, result) {
+      const label = card.querySelector('.predicted-label');
+      const fill = card.querySelector('.confidence-fill');
+      const value = card.querySelector('.confidence-value');
+      const status = card.querySelector('.card-status');
+      const confidence = Math.max(0, Math.min(1, Number(result.confidence) || 0));
+      const pct = Math.round(confidence * 100);
+
+      label.textContent = result.label;
+      label.style.color = classColor(result.label);
+      fill.style.width = pct + '%';
+      fill.style.background = classColor(result.label);
+      value.textContent = pct + '%';
+      status.textContent = 'Confidence from the live /predict response.';
+      card.classList.remove('loading');
+    }
+
+    function showDemoCards() {
+      demoResults.style.display = 'block';
+    }
+
+    function hideDemoCards() {
+      demoResults.style.display = 'none';
+    }
+
+    function resetDemo() {
+      demoText.value = '';
+      demoError.style.display = 'none';
+      hideDemoCards();
+      demoCards.forEach(resetCard);
+      clearBtn.style.display = 'none';
+      classifyBtn.disabled = true;
+      classifyBtn.textContent = 'Classify';
+    }
+
+    demoText.addEventListener('input', () => {
+      classifyBtn.disabled = demoText.value.trim() === '';
+    });
+
+    async function classifyTicket() {
+      const text = demoText.value.trim();
+      if (!text) {
+        return;
+      }
+
+      classifyBtn.disabled = true;
+      classifyBtn.textContent = 'Classifying…';
+      clearBtn.style.display = 'inline-flex';
+      showDemoCards();
+      demoError.style.display = 'none';
+      demoCards.forEach(resetCard);
+
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        if (!response.ok) {
+          throw new Error('Predict request failed');
+        }
+
+        const data = await response.json();
+        const payload = {
+          tfidf: data.tfidf,
+          embeddings: data.embeddings,
+          gpt_fewshot: data.gpt_fewshot,
+          lora: data.lora
+        };
+
+        demoCards.forEach((card) => {
+          const result = payload[card.dataset.model];
+          if (!result || typeof result.label !== 'string' || typeof result.confidence !== 'number') {
+            throw new Error('Incomplete classifier response');
+          }
+          setPrediction(card, result);
+        });
+
+        classifyBtn.disabled = false;
+        classifyBtn.textContent = 'Classify';
+      } catch (error) {
+        hideDemoCards();
+        demoCards.forEach(resetCard);
+        demoError.style.display = 'block';
+        classifyBtn.disabled = !demoText.value.trim();
+        classifyBtn.textContent = 'Classify';
+      }
+    }
+
+    classifyBtn.addEventListener('click', classifyTicket);
+    clearBtn.addEventListener('click', resetDemo);
+
+    demoText.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        classifyTicket();
+      }
+    });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.18 });
+
+    document.querySelectorAll('#view-report .fade-in').forEach((element) => observer.observe(element));
+
+    activatePage('report');
+    resetDemo();
+  </script>
+</body>
+</html>

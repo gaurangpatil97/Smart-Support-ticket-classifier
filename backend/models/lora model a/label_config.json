@@ -1,0 +1,18 @@
+{
+  "id2label": {
+    "0": "Fileservice",
+    "1": "Support general",
+    "2": "Software",
+    "3": "O365",
+    "4": "Active Directory",
+    "5": "Computer-Services"
+  },
+  "label2id": {
+    "Fileservice": 0,
+    "Support general": 1,
+    "Software": 2,
+    "O365": 3,
+    "Active Directory": 4,
+    "Computer-Services": 5
+  }
+}

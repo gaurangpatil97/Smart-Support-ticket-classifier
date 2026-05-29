@@ -1,0 +1,44 @@
+# Virtual envs
+venv/
+.venv/
+nlpvenv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Env files
+.env
+
+# OS files
+.DS_Store
+
+# Datasets / outputs
+*.csv
+results/
+outputs/
+
+# Models / checkpoints
+*.pkl
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# HuggingFace / transformers cache
+cache/
+hf_cache/
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
