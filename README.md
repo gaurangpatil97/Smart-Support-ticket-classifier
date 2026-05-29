@@ -187,12 +187,12 @@ Raw Ticket
 
 ## ✨ Next Steps
 
-- Improve robustness on noisy text by augmenting with real helpdesk logs
-- Add confidence calibration layer for LLM outputs
-- Containerize with Docker for scalable API serving
-- Human-in-the-loop correction interface for continual feedback
 
 ---
+## 📊 Presentation
+
+[View Project Presentation (PDF)](./Smart_Support_Ticket_Classifier.pdf)
+
 
 ## 🧾 Acknowledgements
 
